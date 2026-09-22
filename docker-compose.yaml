@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  tennis-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tennis_exact_score_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - LOG_LEVEL=info
+    volumes:
+      # Mount database directory to persist state across container restarts
+      - ./database/data:/app/database/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
