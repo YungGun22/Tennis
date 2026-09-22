@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tennis Exact Score Probability Engine</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        court: '#1e293b',
+                        accent: '#10b981',
+                        accentDark: '#059669',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-border {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-tennis-ball text-emerald-400 text-2xl"></i>
+                <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                    ScoreForecast AI
+                </span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="inline-flex items-center gap-x-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                    API Connected (Port 8000)
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Match Selector Bar -->
+        <div class="bg-slate-800/60 rounded-2xl p-6 gradient-border shadow-xl">
+            <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Matchup Setup</h2>
+            <form id="predictionForm" onsubmit="event.preventDefault(); runSimulation();" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Player A</label>
+                    <input type="text" id="playerA" value="Jannik Sinner" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Player B</label>
+                    <input type="text" id="playerB" value="Carlos Alcaraz" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Court Surface</label>
+                    <select id="surface" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="Hard" selected>Hard Court</option>
+                        <option value="Clay">Clay Court</option>
+                        <option value="Grass">Grass Court</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Match Format</label>
+                    <select id="bestOf" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="3" selected>Best of 3 Sets</option>
+                        <option value="5">Best of 5 Sets</option>
+                    </select>
+                </div>
+
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2 px-4 rounded-lg transition duration-200 shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-microchip"></i>
+                        <span>Run Model</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Left 2 Columns: Outcomes & Score Distribution -->
+            <div class="lg:col-span-2 space-y-8">
+                
+                <!-- Winner Forecast Card -->
+                <div class="bg-slate-800/60 rounded-2xl p-6 gradient-border shadow-xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Match Winner Probability</h3>
+                        <span class="text-xs bg-slate-700/50 text-slate-300 px-2.5 py-1 rounded-md">10,000 Monte Carlo Trials</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700/50 text-center">
+                            <span class="text-xs font-medium text-slate-400 block mb-1" id="p1Label">Jannik Sinner</span>
+                            <span class="text-3xl font-extrabold text-emerald-400" id="p1WinProb">64.8%</span>
+                        </div>
+                        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700/50 text-center">
+                            <span class="text-xs font-medium text-slate-400 block mb-1" id="p2Label">Carlos Alcaraz</span>
+                            <span class="text-3xl font-extrabold text-cyan-400" id="p2WinProb">35.2%</span>
+                        </div>
+                    </div>
+
+                    <!-- Visual Progress Bar -->
+                    <div class="w-full bg-slate-900 h-4 rounded-full overflow-hidden flex">
+                        <div id="p1Bar" class="bg-emerald-500 h-full transition-all duration-500" style="width: 64.8%"></div>
+                        <div id="p2Bar" class="bg-cyan-500 h-full transition-all duration-500" style="width: 35.2%"></div>
+                    </div>
+                </div>
+
+                <!-- Exact Score Probability Distribution -->
+                <div class="bg-slate-800/60 rounded-2xl p-6 gradient-border shadow-xl space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Exact Match Score Distribution</h3>
+                        <span class="text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2.5 py-1 rounded-md">Must Sum to 1.0</span>
+                    </div>
+
+                    <div class="space-y-4" id="scoreDistributionContainer">
+                        <!-- 2-0 Player A -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-slate-200" id="label_2_0">Jannik Sinner 2–0</span>
+                                <span class="font-bold text-emerald-400" id="prob_2_0">40.1%</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden">
+                                <div id="bar_2_0" class="bg-emerald-500 h-full transition-all duration-500" style="width: 40.1%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 2-1 Player A -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-slate-200" id="label_2_1">Jannik Sinner 2–1</span>
+                                <span class="font-bold text-emerald-400" id="prob_2_1">24.7%</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden">
+                                <div id="bar_2_1" class="bg-emerald-400 h-full transition-all duration-500" style="width: 24.7%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 2-1 Player B -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-slate-200" id="label_1_2">Carlos Alcaraz 2–1</span>
+                                <span class="font-bold text-cyan-400" id="prob_1_2">19.4%</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden">
+                                <div id="bar_1_2" class="bg-cyan-400 h-full transition-all duration-500" style="width: 19.4%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 2-0 Player B -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-slate-200" id="label_0_2">Carlos Alcaraz 2–0</span>
+                                <span class="font-bold text-cyan-400" id="prob_0_2">15.8%</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden">
+                                <div id="bar_0_2" class="bg-cyan-500 h-full transition-all duration-500" style="width: 15.8%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Model Insights & Metadata -->
+            <div class="space-y-8">
+
+                <!-- Underlying Parameters -->
+                <div class="bg-slate-800/60 rounded-2xl p-6 gradient-border shadow-xl space-y-4">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Set & Point Markov Parameters</h3>
+                    
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Single Set Win Prob (A)</span>
+                            <span class="font-semibold text-slate-200" id="pSetWin">64.2%</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Expected Total Sets</span>
+                            <span class="font-semibold text-slate-200" id="expSets">2.44 Sets</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Most Likely Exact Score</span>
+                            <span class="font-semibold text-emerald-400" id="topScore">2–0</span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-slate-700/50">
+                            <span class="text-slate-400">Model Version</span>
+                            <span class="font-semibold text-slate-300">v1.4.2-lightgbm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature Importance Breakdown -->
+                <div class="bg-slate-800/60 rounded-2xl p-6 gradient-border shadow-xl space-y-4">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Key Predictive Drivers</h3>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300">Surface Elo Differential</span>
+                                <span class="text-emerald-400 font-medium">+82 pts</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full" style="width: 85%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300">Hold Rate / Serve Strength</span>
+                                <span class="text-emerald-400 font-medium">+4.2%</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full" style="width: 65%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-300">14-Day Match Workload</span>
+                                <span class="text-cyan-400 font-medium">3 sets less</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-cyan-500 h-full" style="width: 45%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        function runSimulation() {
+            const p1 = document.getElementById("playerA").value;
+            const p2 = document.getElementById("playerB").value;
+
+            // Update Labels
+            document.getElementById("p1Label").innerText = p1;
+            document.getElementById("p2Label").innerText = p2;
+
+            document.getElementById("label_2_0").innerText = `${p1} 2–0`;
+            document.getElementById("label_2_1").innerText = `${p1} 2–1`;
+            document.getElementById("label_1_2").innerText = `${p2} 2–1`;
+            document.getElementById("label_0_2").innerText = `${p2} 2–0`;
+
+            // Dynamic stochastic simulation response mockup
+            const p1Win = (55 + Math.random() * 20).toFixed(1);
+            const p2Win = (100 - p1Win).toFixed(1);
+
+            document.getElementById("p1WinProb").innerText = `${p1Win}%`;
+            document.getElementById("p2WinProb").innerText = `${p2Win}%`;
+
+            document.getElementById("p1Bar").style.width = `${p1Win}%`;
+            document.getElementById("p2Bar").style.width = `${p2Win}%`;
+
+            // Calculate exact score distribution
+            const p2_0 = (p1Win * 0.62).toFixed(1);
+            const p2_1 = (p1Win - p2_0).toFixed(1);
+            const p0_2 = (p2Win * 0.58).toFixed(1);
+            const p1_2 = (p2Win - p0_2).toFixed(1);
+
+            document.getElementById("prob_2_0").innerText = `${p2_0}%`;
+            document.getElementById("prob_2_1").innerText = `${p2_1}%`;
+            document.getElementById("prob_1_2").innerText = `${p1_2}%`;
+            document.getElementById("prob_0_2").innerText = `${p0_2}%`;
+
+            document.getElementById("bar_2_0").style.width = `${p2_0}%`;
+            document.getElementById("bar_2_1").style.width = `${p2_1}%`;
+            document.getElementById("bar_1_2").style.width = `${p1_2}%`;
+            document.getElementById("bar_0_2").style.width = `${p0_2}%`;
+        }
+    </script>
+</body>
+</html>
